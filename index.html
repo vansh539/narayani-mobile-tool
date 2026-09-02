@@ -473,6 +473,15 @@ function openLoadingTab(){
   if(w)w.document.write('<title>Generating…</title><body style="font-family:sans-serif;padding:40px;text-align:center;color:#666">Generating your PDF…</body>');
   return w;
 }
+function showPdfReady(w,blobUrl,filename){
+  if(w&&!w.closed){
+    w.document.open();
+    w.document.write('<!DOCTYPE html><title>PDF Ready</title><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f4f4f0"><a href="'+blobUrl+'" download="'+filename+'" style="background:#c45c00;color:#fff;padding:16px 32px;border-radius:8px;font-size:18px;font-weight:600;text-decoration:none">📄 Tap to Open / Save PDF</a></body>');
+    w.document.close();
+  }else{
+    var a=document.createElement('a');a.href=blobUrl;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);
+  }
+}
 async function qOpen(){
   var btn=document.getElementById('q-open-btn'),origText=btn?btn.textContent:'';
   var w=openLoadingTab();
@@ -495,8 +504,7 @@ async function qOpen(){
     var pdf=buildMultiPagePdf([pageImg],{w:QUOTE_PDF_W,h:QUOTE_PDF_H});
     if(qBlobUrl)URL.revokeObjectURL(qBlobUrl);
     qBlobUrl=URL.createObjectURL(binToBlob(pdf,'application/pdf'));
-    if(w&&!w.closed){w.location=qBlobUrl;}
-    else{var a=document.createElement('a');a.href=qBlobUrl;a.download='Quotation.pdf';document.body.appendChild(a);a.click();document.body.removeChild(a);}
+    showPdfReady(w,qBlobUrl,'Quotation.pdf');
   }catch(err){if(w&&!w.closed)w.close();alert('Could not generate PDF: '+err.message);}
   finally{if(frame&&frame.parentNode)frame.parentNode.removeChild(frame);}
   if(btn){btn.textContent=origText;btn.disabled=false;}
@@ -517,8 +525,7 @@ async function chittiOpen(){
     var pdf=buildMultiPagePdf(images,{w:CHITTI_PDF_W,h:CHITTI_PDF_H});
     if(chittiBlobUrl)URL.revokeObjectURL(chittiBlobUrl);
     chittiBlobUrl=URL.createObjectURL(binToBlob(pdf,'application/pdf'));
-    if(w&&!w.closed){w.location=chittiBlobUrl;}
-    else{var a=document.createElement('a');a.href=chittiBlobUrl;a.download='Invoice.pdf';document.body.appendChild(a);a.click();document.body.removeChild(a);}
+    showPdfReady(w,chittiBlobUrl,'Invoice.pdf');
   }catch(err){if(w&&!w.closed)w.close();alert('Could not generate PDF: '+err.message);}
   if(btn){btn.textContent=origText;btn.disabled=false;}
 }
