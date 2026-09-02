@@ -155,7 +155,8 @@ input[type=number]{-moz-appearance:textfield}
   <div class="step" id="s4">
     <div class="print-note">✓ Ready · <strong>A6 · Margins: None · Scale: 100% · Backgrounds: ON</strong></div>
     <div class="doc-wrap" id="preview-wrap"></div>
-    <div class="acts"><button class="btn-s" onclick="go(3)">← Edit</button><button class="btn-p" id="chitti-open-btn" onclick="chittiOpen()">📄 Generate &amp; Save PDF</button><button class="btn-s" onclick="reset()">New</button></div>
+    <div class="acts"><button class="btn-s" onclick="go(3)">← Edit</button><button class="btn-p" id="chitti-open-btn" onclick="chittiOpen()">📄 Generate PDF</button><button class="btn-s" onclick="reset()">New</button></div>
+    <div id="chitti-pdf-ready" style="display:none;margin-top:10px"></div>
   </div>
   <div class="step" id="s9"><div class="card"><h2>Quotation format</h2>
     <div class="grid3">
@@ -203,8 +204,9 @@ input[type=number]{-moz-appearance:textfield}
   </div>
   <div class="step" id="s6">
     <div class="dl-box">
-      <p>✅ Ready! Tap below to generate the PDF, then share it from the new tab.</p>
-      <button class="dl-btn" id="q-open-btn" onclick="qOpen()">📄 Generate &amp; Open Quotation PDF</button>
+      <p>✅ Ready! Tap below to generate the PDF.</p>
+      <button class="dl-btn" id="q-open-btn" onclick="qOpen()">📄 Generate Quotation PDF</button>
+      <div id="q-pdf-ready" style="display:none;margin-top:12px"></div>
     </div>
     <div class="acts"><button class="btn-s" onclick="go(5)">← Edit</button><button class="btn-s" onclick="reset()">New</button></div>
   </div>
@@ -315,7 +317,11 @@ function generate(){
   let ph='';chunks.forEach((c,idx)=>{const il=(idx===chunks.length-1);ph+=c.cont?buildContSlip(c.items,il,sub,tq,lab,weigh,freight,unload,bend,gst,others,advance,tot,note):buildFirstSlip(c.items,il,sub,tq,lab,weigh,freight,unload,bend,gst,others,advance,tot,meta,note);});
   document.getElementById('preview-wrap').innerHTML=ph;
   let prh='';chunks.forEach((c,idx)=>{const il=(idx===chunks.length-1);const sh=c.cont?buildContSlip(c.items,il,sub,tq,lab,weigh,freight,unload,bend,gst,others,advance,tot,note):buildFirstSlip(c.items,il,sub,tq,lab,weigh,freight,unload,bend,gst,others,advance,tot,meta,note);prh+=`<div class="print-slip"><div style="height:9mm"></div>${sh}</div>`;if(!il)prh+=`<div class="page-break"></div>`;});
-  document.getElementById('print-area').innerHTML=prh;go(4);
+  document.getElementById('print-area').innerHTML=prh;
+  var cbtn=document.getElementById('chitti-open-btn'),cready=document.getElementById('chitti-pdf-ready');
+  if(cbtn){cbtn.style.display='';cbtn.textContent='📄 Generate PDF';cbtn.disabled=false;}
+  if(cready){cready.style.display='none';cready.innerHTML='';}
+  go(4);
 }
 
 function pickFormat(f,el){qFormat=f;document.querySelectorAll('#s9 .type-btn').forEach(function(b){b.classList.remove('on');});el.classList.add('on');document.getElementById('n9').disabled=false;}
@@ -433,6 +439,9 @@ function qGenerate(){
     .replace('__RATEHDR__',rateHdr).replace('__CHARGES__',totalsRows).replace('__TERMS__',termsHtml)
     .replace('__NOTE__',noteHtml).replace('__BANKDETAILS__',bankHtml);
   qPendingHtml=page;
+  var qbtn=document.getElementById('q-open-btn'),qready=document.getElementById('q-pdf-ready');
+  if(qbtn){qbtn.style.display='';qbtn.textContent='📄 Generate Quotation PDF';qbtn.disabled=false;}
+  if(qready){qready.style.display='none';qready.innerHTML='';}
   document.querySelectorAll('.step').forEach(function(s){s.classList.remove('active');});
   document.getElementById('s6').classList.add('active');
   window.scrollTo(0,0);
@@ -468,24 +477,18 @@ function buildMultiPagePdf(pageImgs,dims){
   return out;
 }
 function binToBlob(bin,type){var buf=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i)&0xFF;return new Blob([buf],{type:type});}
-function openLoadingTab(){
-  var w=window.open('','_blank');
-  if(w)w.document.write('<title>Generating…</title><body style="font-family:sans-serif;padding:40px;text-align:center;color:#666">Generating your PDF…</body>');
-  return w;
-}
-function showPdfReady(w,blobUrl,filename){
-  if(w&&!w.closed){
-    w.document.open();
-    w.document.write('<!DOCTYPE html><title>PDF Ready</title><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f4f4f0"><a href="'+blobUrl+'" download="'+filename+'" style="background:#c45c00;color:#fff;padding:16px 32px;border-radius:8px;font-size:18px;font-weight:600;text-decoration:none">📄 Tap to Open / Save PDF</a></body>');
-    w.document.close();
-  }else{
-    var a=document.createElement('a');a.href=blobUrl;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);
+function showPdfReadyInline(readyBox,btn,blobUrl,filename){
+  if(btn)btn.style.display='none';
+  if(readyBox){
+    readyBox.innerHTML='<a href="'+blobUrl+'" download="'+filename+'" style="display:inline-block;background:#c45c00;color:#fff;padding:14px 28px;border-radius:8px;font-size:16px;font-weight:600;text-decoration:none">📄 Open / Save PDF</a>';
+    readyBox.style.display='block';
   }
 }
 async function qOpen(){
   var btn=document.getElementById('q-open-btn'),origText=btn?btn.textContent:'';
-  var w=openLoadingTab();
-  if(btn){btn.textContent='Generating…';btn.disabled=true;}
+  var readyBox=document.getElementById('q-pdf-ready');
+  if(readyBox){readyBox.style.display='none';readyBox.innerHTML='';}
+  if(btn){btn.style.display='';btn.textContent='Generating…';btn.disabled=true;}
   var frame=null;
   try{
     frame=document.createElement('iframe');
@@ -504,16 +507,18 @@ async function qOpen(){
     var pdf=buildMultiPagePdf([pageImg],{w:QUOTE_PDF_W,h:QUOTE_PDF_H});
     if(qBlobUrl)URL.revokeObjectURL(qBlobUrl);
     qBlobUrl=URL.createObjectURL(binToBlob(pdf,'application/pdf'));
-    showPdfReady(w,qBlobUrl,'Quotation.pdf');
-  }catch(err){if(w&&!w.closed)w.close();alert('Could not generate PDF: '+err.message);}
-  finally{if(frame&&frame.parentNode)frame.parentNode.removeChild(frame);}
-  if(btn){btn.textContent=origText;btn.disabled=false;}
+    showPdfReadyInline(readyBox,btn,qBlobUrl,'Quotation.pdf');
+  }catch(err){
+    alert('Could not generate PDF: '+err.message);
+    if(btn){btn.textContent=origText;btn.disabled=false;}
+  }finally{if(frame&&frame.parentNode)frame.parentNode.removeChild(frame);}
 }
 var CHITTI_PDF_W=mmToPt(105),CHITTI_PDF_H=mmToPt(148.5);
 async function chittiOpen(){
   var btn=document.getElementById('chitti-open-btn'),origText=btn?btn.textContent:'';
-  var w=openLoadingTab();
-  if(btn){btn.textContent='Generating…';btn.disabled=true;}
+  var readyBox=document.getElementById('chitti-pdf-ready');
+  if(readyBox){readyBox.style.display='none';readyBox.innerHTML='';}
+  if(btn){btn.style.display='';btn.textContent='Generating…';btn.disabled=true;}
   try{
     var slips=document.querySelectorAll('#preview-wrap .doc, #preview-wrap .doc-cont');
     if(!slips.length)throw new Error('Nothing to print');
@@ -525,9 +530,11 @@ async function chittiOpen(){
     var pdf=buildMultiPagePdf(images,{w:CHITTI_PDF_W,h:CHITTI_PDF_H});
     if(chittiBlobUrl)URL.revokeObjectURL(chittiBlobUrl);
     chittiBlobUrl=URL.createObjectURL(binToBlob(pdf,'application/pdf'));
-    showPdfReady(w,chittiBlobUrl,'Invoice.pdf');
-  }catch(err){if(w&&!w.closed)w.close();alert('Could not generate PDF: '+err.message);}
-  if(btn){btn.textContent=origText;btn.disabled=false;}
+    showPdfReadyInline(readyBox,btn,chittiBlobUrl,'Invoice.pdf');
+  }catch(err){
+    alert('Could not generate PDF: '+err.message);
+    if(btn){btn.textContent=origText;btn.disabled=false;}
+  }
 }
 function reset(){
   rows=[];dtype='';qRows=[];qFormat='';
